@@ -229,6 +229,11 @@ func (s *Simulation) Update(dt float64) {
 		}
 	}
 	s.Cars = newCars
+
+	// Автоматически останавливаем симуляцию, если достигнут лимит машин и все прошли дорогу
+	if s.TotalCarsMade >= s.MaxCars && len(s.Cars) == 0 {
+		s.Running = false
+	}
 }
 
 // GetState возвращает текущее состояние симуляции
