@@ -276,6 +276,40 @@
                     <input type="range" id="maxCars" min="10" max="500" step="10" value="100">
                 </div>
 
+                <h3 style="margin-top: 20px; margin-bottom: 10px; color: #667eea;">⚙️ Параметры физики</h3>
+
+                <div class="control-group">
+                    <label>
+                        Время реакции (сек):
+                        <span class="value-display" id="reactionTimeValue">0.2</span>
+                    </label>
+                    <input type="range" id="reactionTime" min="0.1" max="1.0" step="0.05" value="0.2">
+                </div>
+
+                <div class="control-group">
+                    <label>
+                        Коэф. безопасности:
+                        <span class="value-display" id="safetyMultiplierValue">3.0</span>
+                    </label>
+                    <input type="range" id="safetyMultiplier" min="1.0" max="5.0" step="0.1" value="3.0">
+                </div>
+
+                <div class="control-group">
+                    <label>
+                        Торможение (м/с²):
+                        <span class="value-display" id="brakeDecelerationValue">6.67</span>
+                    </label>
+                    <input type="range" id="brakeDeceleration" min="2.0" max="15.0" step="0.1" value="6.67">
+                </div>
+
+                <div class="control-group">
+                    <label>
+                        Ускорение (м/с²):
+                        <span class="value-display" id="accelerationValue">2.0</span>
+                    </label>
+                    <input type="range" id="acceleration" min="0.5" max="5.0" step="0.1" value="2.0">
+                </div>
+
                 <div class="buttons">
                     <button class="btn-start" onclick="startSimulation()">▶ Старт</button>
                     <button class="btn-stop" onclick="stopSimulation()">⏸ Стоп</button>
@@ -509,6 +543,16 @@
             ws.send(JSON.stringify({ action: 'config', data: config }));
         }
 
+        function updatePhysics() {
+            const physics = {
+                reactionTime: parseFloat(document.getElementById('reactionTime').value),
+                safetyMultiplier: parseFloat(document.getElementById('safetyMultiplier').value),
+                brakeDeceleration: parseFloat(document.getElementById('brakeDeceleration').value),
+                acceleration: parseFloat(document.getElementById('acceleration').value)
+            };
+            ws.send(JSON.stringify({ action: 'physics', data: physics }));
+        }
+
         // Функция для изменения скорости времени
         function setTimeScale(scale) {
             ws.send(JSON.stringify({ action: 'timescale', value: scale }));
@@ -538,6 +582,26 @@
         document.getElementById('maxCars').addEventListener('input', function() {
             document.getElementById('maxCarsValue').textContent = this.value;
             updateConfig();
+        });
+
+        document.getElementById('reactionTime').addEventListener('input', function() {
+            document.getElementById('reactionTimeValue').textContent = this.value;
+            updatePhysics();
+        });
+
+        document.getElementById('safetyMultiplier').addEventListener('input', function() {
+            document.getElementById('safetyMultiplierValue').textContent = this.value;
+            updatePhysics();
+        });
+
+        document.getElementById('brakeDeceleration').addEventListener('input', function() {
+            document.getElementById('brakeDecelerationValue').textContent = this.value;
+            updatePhysics();
+        });
+
+        document.getElementById('acceleration').addEventListener('input', function() {
+            document.getElementById('accelerationValue').textContent = this.value;
+            updatePhysics();
         });
 
         // Адаптивный размер canvas

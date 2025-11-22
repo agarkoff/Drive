@@ -13,12 +13,9 @@ import (
 )
 
 const (
-	RoadLength        = 5000.0 // метры (5 км)
-	CarLength         = 4.5    // метры
-	UpdateInterval    = 50     // миллисекунды
-	ReactionTime      = 0.2    // секунды
-	SafetyMultiplier  = 3.0    // коэффициент безопасной дистанции
-	BrakeDeceleration = 6.67   // м/с² (примерно 15 миль/ч за секунду)
+	RoadLength     = 5000.0 // метры (5 км)
+	CarLength      = 4.5    // метры
+	UpdateInterval = 50     // миллисекунды
 )
 
 // Car представляет автомобиль
@@ -36,19 +33,23 @@ type Car struct {
 
 // Simulation представляет симуляцию движения
 type Simulation struct {
-	Cars            []*Car          `json:"cars"`
-	Time            float64         `json:"time"`
-	CarsCompleted   int             `json:"carsCompleted"`
-	TotalCarsMade   int             `json:"totalCarsMade"`
-	Running         bool            `json:"running"`
-	SpawnInterval   float64         `json:"spawnInterval"`   // секунды между машинами
-	MinSpeed        float64         `json:"minSpeed"`        // м/с
-	MaxSpeed        float64         `json:"maxSpeed"`        // м/с
-	TimeScale       float64         `json:"timeScale"`       // множитель скорости времени (1.0 = нормально)
-	MaxCars         int             `json:"maxCars"`         // максимальное количество машин для генерации
-	mu              sync.RWMutex
-	lastSpawn       float64
-	nextCarID       int
+	Cars              []*Car       `json:"cars"`
+	Time              float64      `json:"time"`
+	CarsCompleted     int          `json:"carsCompleted"`
+	TotalCarsMade     int          `json:"totalCarsMade"`
+	Running           bool         `json:"running"`
+	SpawnInterval     float64      `json:"spawnInterval"`     // секунды между машинами
+	MinSpeed          float64      `json:"minSpeed"`          // м/с
+	MaxSpeed          float64      `json:"maxSpeed"`          // м/с
+	TimeScale         float64      `json:"timeScale"`         // множитель скорости времени (1.0 = нормально)
+	MaxCars           int          `json:"maxCars"`           // максимальное количество машин для генерации
+	ReactionTime      float64      `json:"reactionTime"`      // секунды задержки реакции
+	SafetyMultiplier  float64      `json:"safetyMultiplier"`  // коэффициент безопасной дистанции
+	BrakeDeceleration float64      `json:"brakeDeceleration"` // м/с² торможение
+	Acceleration      float64      `json:"acceleration"`      // м/с² ускорение
+	mu                sync.RWMutex
+	lastSpawn         float64
+	nextCarID         int
 }
 
 // SimulationConfig конфигурация симуляции
@@ -57,6 +58,14 @@ type SimulationConfig struct {
 	MinSpeed      float64 `json:"minSpeed"`      // км/ч
 	MaxSpeed      float64 `json:"maxSpeed"`      // км/ч
 	MaxCars       int     `json:"maxCars"`       // максимальное количество машин
+}
+
+// PhysicsConfig конфигурация параметров физики
+type PhysicsConfig struct {
+	ReactionTime      float64 `json:"reactionTime"`      // секунды
+	SafetyMultiplier  float64 `json:"safetyMultiplier"`  // коэффициент
+	BrakeDeceleration float64 `json:"brakeDeceleration"` // м/с²
+	Acceleration      float64 `json:"acceleration"`      // м/с²
 }
 
 var (
@@ -78,13 +87,17 @@ func init() {
 // NewSimulation создает новую симуляцию
 func NewSimulation() *Simulation {
 	return &Simulation{
-		Cars:          make([]*Car, 0),
-		SpawnInterval: 2.0,
-		MinSpeed:      kmhToMs(50),
-		MaxSpeed:      kmhToMs(80),
-		TimeScale:     1.0,
-		MaxCars:       100,
-		Running:       false,
+		Cars:              make([]*Car, 0),
+		SpawnInterval:     2.0,
+		MinSpeed:          kmhToMs(50),
+		MaxSpeed:          kmhToMs(80),
+		TimeScale:         1.0,
+		MaxCars:           100,
+		Running:           false,
+		ReactionTime:      0.2,  // секунды
+		SafetyMultiplier:  3.0,  // коэффициент
+		BrakeDeceleration: 6.67, // м/с²
+		Acceleration:      2.0,  // м/с²
 	}
 }
 
@@ -127,11 +140,11 @@ func (s *Simulation) SpawnCar() {
 }
 
 // getSafeDistance вычисляет безопасную дистанцию
-func getSafeDistance(speedDiff float64) float64 {
+func getSafeDistance(speedDiff float64, safetyMultiplier float64) float64 {
 	// Преобразуем в км/ч для расчета (как в оригинале: 1 фут на милю/час разницы)
 	speedDiffKmh := msToKmh(math.Abs(speedDiff))
 	// 1 миля/час ≈ 1.6 км/ч, 1 фут ≈ 0.3 м
-	safeDistance := (speedDiffKmh / 1.6) * 0.3 * SafetyMultiplier
+	safeDistance := (speedDiffKmh / 1.6) * 0.3 * safetyMultiplier
 	return math.Max(safeDistance, CarLength*2)
 }
 
@@ -184,13 +197,13 @@ func (s *Simulation) Update(dt float64) {
 		if carAhead != nil {
 			distance := carAhead.Position - car.Position - CarLength
 			speedDiff := car.Speed - carAhead.Speed
-			safeDistance := getSafeDistance(speedDiff)
+			safeDistance := getSafeDistance(speedDiff, s.SafetyMultiplier)
 
 			if distance < safeDistance {
 				// Нужно тормозить
-				if car.State != "braking" || s.Time-car.lastBrakeTime > ReactionTime {
+				if car.State != "braking" || s.Time-car.lastBrakeTime > s.ReactionTime {
 					car.State = "braking"
-					car.Speed = math.Max(0, car.Speed-BrakeDeceleration*dt)
+					car.Speed = math.Max(0, car.Speed-s.BrakeDeceleration*dt)
 					if car.lastBrakeTime == 0 || s.Time-car.lastBrakeTime > 1.0 {
 						car.BrakeCount++
 						car.lastBrakeTime = s.Time
@@ -199,8 +212,7 @@ func (s *Simulation) Update(dt float64) {
 			} else if car.Speed < car.TargetSpeed {
 				// Можно ускоряться
 				car.State = "accelerating"
-				acceleration := 2.0 // м/с²
-				car.Speed = math.Min(car.TargetSpeed, car.Speed+acceleration*dt)
+				car.Speed = math.Min(car.TargetSpeed, car.Speed+s.Acceleration*dt)
 			} else {
 				car.State = "normal"
 			}
@@ -208,8 +220,7 @@ func (s *Simulation) Update(dt float64) {
 			// Нет машины впереди - движемся к целевой скорости
 			if car.Speed < car.TargetSpeed {
 				car.State = "accelerating"
-				acceleration := 2.0
-				car.Speed = math.Min(car.TargetSpeed, car.Speed+acceleration*dt)
+				car.Speed = math.Min(car.TargetSpeed, car.Speed+s.Acceleration*dt)
 			} else {
 				car.State = "normal"
 			}
@@ -242,23 +253,31 @@ func (s *Simulation) GetState() interface{} {
 	defer s.mu.RUnlock()
 
 	return struct {
-		Cars          []*Car  `json:"cars"`
-		Time          float64 `json:"time"`
-		CarsCompleted int     `json:"carsCompleted"`
-		TotalCarsMade int     `json:"totalCarsMade"`
-		Running       bool    `json:"running"`
-		RoadLength    float64 `json:"roadLength"`
-		TimeScale     float64 `json:"timeScale"`
-		MaxCars       int     `json:"maxCars"`
+		Cars              []*Car  `json:"cars"`
+		Time              float64 `json:"time"`
+		CarsCompleted     int     `json:"carsCompleted"`
+		TotalCarsMade     int     `json:"totalCarsMade"`
+		Running           bool    `json:"running"`
+		RoadLength        float64 `json:"roadLength"`
+		TimeScale         float64 `json:"timeScale"`
+		MaxCars           int     `json:"maxCars"`
+		ReactionTime      float64 `json:"reactionTime"`
+		SafetyMultiplier  float64 `json:"safetyMultiplier"`
+		BrakeDeceleration float64 `json:"brakeDeceleration"`
+		Acceleration      float64 `json:"acceleration"`
 	}{
-		Cars:          s.Cars,
-		Time:          s.Time,
-		CarsCompleted: s.CarsCompleted,
-		TotalCarsMade: s.TotalCarsMade,
-		Running:       s.Running,
-		RoadLength:    RoadLength,
-		TimeScale:     s.TimeScale,
-		MaxCars:       s.MaxCars,
+		Cars:              s.Cars,
+		Time:              s.Time,
+		CarsCompleted:     s.CarsCompleted,
+		TotalCarsMade:     s.TotalCarsMade,
+		Running:           s.Running,
+		RoadLength:        RoadLength,
+		TimeScale:         s.TimeScale,
+		MaxCars:           s.MaxCars,
+		ReactionTime:      s.ReactionTime,
+		SafetyMultiplier:  s.SafetyMultiplier,
+		BrakeDeceleration: s.BrakeDeceleration,
+		Acceleration:      s.Acceleration,
 	}
 }
 
@@ -297,6 +316,24 @@ func (s *Simulation) UpdateConfig(config SimulationConfig) {
 	s.MaxSpeed = kmhToMs(config.MaxSpeed)
 	if config.MaxCars > 0 {
 		s.MaxCars = config.MaxCars
+	}
+	s.mu.Unlock()
+}
+
+// UpdatePhysics обновляет параметры физики
+func (s *Simulation) UpdatePhysics(config PhysicsConfig) {
+	s.mu.Lock()
+	if config.ReactionTime > 0 {
+		s.ReactionTime = config.ReactionTime
+	}
+	if config.SafetyMultiplier > 0 {
+		s.SafetyMultiplier = config.SafetyMultiplier
+	}
+	if config.BrakeDeceleration > 0 {
+		s.BrakeDeceleration = config.BrakeDeceleration
+	}
+	if config.Acceleration > 0 {
+		s.Acceleration = config.Acceleration
 	}
 	s.mu.Unlock()
 }
@@ -363,6 +400,11 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			configData, _ := json.Marshal(cmd["data"])
 			json.Unmarshal(configData, &config)
 			simulation.UpdateConfig(config)
+		case "physics":
+			var physics PhysicsConfig
+			physicsData, _ := json.Marshal(cmd["data"])
+			json.Unmarshal(physicsData, &physics)
+			simulation.UpdatePhysics(physics)
 		case "timescale":
 			if scale, ok := cmd["value"].(float64); ok {
 				simulation.SetTimeScale(scale)
