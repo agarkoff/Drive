@@ -45,6 +45,7 @@ type Simulation struct {
 	MinSpeed        float64         `json:"minSpeed"`        // м/с
 	MaxSpeed        float64         `json:"maxSpeed"`        // м/с
 	TimeScale       float64         `json:"timeScale"`       // множитель скорости времени (1.0 = нормально)
+	MaxCars         int             `json:"maxCars"`         // максимальное количество машин для генерации
 	mu              sync.RWMutex
 	lastSpawn       float64
 	nextCarID       int
@@ -55,6 +56,7 @@ type SimulationConfig struct {
 	SpawnInterval float64 `json:"spawnInterval"` // секунды
 	MinSpeed      float64 `json:"minSpeed"`      // км/ч
 	MaxSpeed      float64 `json:"maxSpeed"`      // км/ч
+	MaxCars       int     `json:"maxCars"`       // максимальное количество машин
 }
 
 var (
@@ -81,6 +83,7 @@ func NewSimulation() *Simulation {
 		MinSpeed:      kmhToMs(50),
 		MaxSpeed:      kmhToMs(80),
 		TimeScale:     1.0,
+		MaxCars:       100,
 		Running:       false,
 	}
 }
@@ -146,7 +149,7 @@ func (s *Simulation) Update(dt float64) {
 	s.Time += dt
 
 	// Создаем новые автомобили
-	if s.Time-s.lastSpawn >= s.SpawnInterval {
+	if s.Time-s.lastSpawn >= s.SpawnInterval && s.TotalCarsMade < s.MaxCars {
 		// Проверяем, что начало дороги свободно
 		canSpawn := true
 		for _, car := range s.Cars {
@@ -241,6 +244,7 @@ func (s *Simulation) GetState() interface{} {
 		Running       bool    `json:"running"`
 		RoadLength    float64 `json:"roadLength"`
 		TimeScale     float64 `json:"timeScale"`
+		MaxCars       int     `json:"maxCars"`
 	}{
 		Cars:          s.Cars,
 		Time:          s.Time,
@@ -249,6 +253,7 @@ func (s *Simulation) GetState() interface{} {
 		Running:       s.Running,
 		RoadLength:    RoadLength,
 		TimeScale:     s.TimeScale,
+		MaxCars:       s.MaxCars,
 	}
 }
 
@@ -285,6 +290,9 @@ func (s *Simulation) UpdateConfig(config SimulationConfig) {
 	s.SpawnInterval = config.SpawnInterval
 	s.MinSpeed = kmhToMs(config.MinSpeed)
 	s.MaxSpeed = kmhToMs(config.MaxSpeed)
+	if config.MaxCars > 0 {
+		s.MaxCars = config.MaxCars
+	}
 	s.mu.Unlock()
 }
 

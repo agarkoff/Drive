@@ -268,6 +268,14 @@
                     <input type="range" id="maxSpeed" min="50" max="120" step="5" value="80">
                 </div>
 
+                <div class="control-group">
+                    <label>
+                        Макс. количество машин:
+                        <span class="value-display" id="maxCarsValue">100</span>
+                    </label>
+                    <input type="range" id="maxCars" min="10" max="500" step="10" value="100">
+                </div>
+
                 <div class="buttons">
                     <button class="btn-start" onclick="startSimulation()">▶ Старт</button>
                     <button class="btn-stop" onclick="stopSimulation()">⏸ Стоп</button>
@@ -365,6 +373,15 @@
                 if (parseFloat(timeScaleSlider.value) !== simulationData.timeScale) {
                     timeScaleSlider.value = simulationData.timeScale;
                     document.getElementById('timeScaleValue').textContent = simulationData.timeScale.toFixed(1) + 'x';
+                }
+            }
+
+            // Обновляем слайдер максимального количества машин
+            if (simulationData.maxCars !== undefined) {
+                const maxCarsSlider = document.getElementById('maxCars');
+                if (parseInt(maxCarsSlider.value) !== simulationData.maxCars) {
+                    maxCarsSlider.value = simulationData.maxCars;
+                    document.getElementById('maxCarsValue').textContent = simulationData.maxCars;
                 }
             }
 
@@ -486,7 +503,8 @@
             const config = {
                 spawnInterval: parseFloat(document.getElementById('spawnInterval').value),
                 minSpeed: parseFloat(document.getElementById('minSpeed').value),
-                maxSpeed: parseFloat(document.getElementById('maxSpeed').value)
+                maxSpeed: parseFloat(document.getElementById('maxSpeed').value),
+                maxCars: parseInt(document.getElementById('maxCars').value)
             };
             ws.send(JSON.stringify({ action: 'config', data: config }));
         }
@@ -514,6 +532,11 @@
 
         document.getElementById('maxSpeed').addEventListener('input', function() {
             document.getElementById('maxSpeedValue').textContent = this.value;
+            updateConfig();
+        });
+
+        document.getElementById('maxCars').addEventListener('input', function() {
+            document.getElementById('maxCarsValue').textContent = this.value;
             updateConfig();
         });
 
