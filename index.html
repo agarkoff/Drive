@@ -238,6 +238,14 @@
 
                 <div class="control-group">
                     <label>
+                        Скорость времени:
+                        <span class="value-display" id="timeScaleValue">1.0x</span>
+                    </label>
+                    <input type="range" id="timeScale" min="0.1" max="10" step="0.1" value="1.0">
+                </div>
+
+                <div class="control-group">
+                    <label>
                         Интервал создания машин (сек):
                         <span class="value-display" id="spawnIntervalValue">2.0</span>
                     </label>
@@ -350,6 +358,15 @@
             document.getElementById('carsOnRoad').textContent = simulationData.cars.length;
             document.getElementById('totalCars').textContent = simulationData.totalCarsMade;
             document.getElementById('completedCars').textContent = simulationData.carsCompleted;
+
+            // Обновляем слайдер скорости времени, если значение изменилось
+            if (simulationData.timeScale !== undefined) {
+                const timeScaleSlider = document.getElementById('timeScale');
+                if (parseFloat(timeScaleSlider.value) !== simulationData.timeScale) {
+                    timeScaleSlider.value = simulationData.timeScale;
+                    document.getElementById('timeScaleValue').textContent = simulationData.timeScale.toFixed(1) + 'x';
+                }
+            }
 
             const statusIndicator = document.getElementById('statusIndicator');
             statusIndicator.className = 'status-indicator ' +
@@ -474,7 +491,17 @@
             ws.send(JSON.stringify({ action: 'config', data: config }));
         }
 
+        // Функция для изменения скорости времени
+        function setTimeScale(scale) {
+            ws.send(JSON.stringify({ action: 'timescale', value: scale }));
+        }
+
         // Обработчики событий
+        document.getElementById('timeScale').addEventListener('input', function() {
+            document.getElementById('timeScaleValue').textContent = this.value + 'x';
+            setTimeScale(parseFloat(this.value));
+        });
+
         document.getElementById('spawnInterval').addEventListener('input', function() {
             document.getElementById('spawnIntervalValue').textContent = this.value;
             updateConfig();

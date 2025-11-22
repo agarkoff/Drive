@@ -44,6 +44,7 @@ type Simulation struct {
 	SpawnInterval   float64         `json:"spawnInterval"`   // секунды между машинами
 	MinSpeed        float64         `json:"minSpeed"`        // м/с
 	MaxSpeed        float64         `json:"maxSpeed"`        // м/с
+	TimeScale       float64         `json:"timeScale"`       // множитель скорости времени (1.0 = нормально)
 	mu              sync.RWMutex
 	lastSpawn       float64
 	nextCarID       int
@@ -79,6 +80,7 @@ func NewSimulation() *Simulation {
 		SpawnInterval: 2.0,
 		MinSpeed:      kmhToMs(50),
 		MaxSpeed:      kmhToMs(80),
+		TimeScale:     1.0,
 		Running:       false,
 	}
 }
@@ -139,6 +141,8 @@ func (s *Simulation) Update(dt float64) {
 		return
 	}
 
+	// Применяем множитель скорости времени
+	dt = dt * s.TimeScale
 	s.Time += dt
 
 	// Создаем новые автомобили
@@ -236,6 +240,7 @@ func (s *Simulation) GetState() interface{} {
 		TotalCarsMade int     `json:"totalCarsMade"`
 		Running       bool    `json:"running"`
 		RoadLength    float64 `json:"roadLength"`
+		TimeScale     float64 `json:"timeScale"`
 	}{
 		Cars:          s.Cars,
 		Time:          s.Time,
@@ -243,6 +248,7 @@ func (s *Simulation) GetState() interface{} {
 		TotalCarsMade: s.TotalCarsMade,
 		Running:       s.Running,
 		RoadLength:    RoadLength,
+		TimeScale:     s.TimeScale,
 	}
 }
 
@@ -279,6 +285,20 @@ func (s *Simulation) UpdateConfig(config SimulationConfig) {
 	s.SpawnInterval = config.SpawnInterval
 	s.MinSpeed = kmhToMs(config.MinSpeed)
 	s.MaxSpeed = kmhToMs(config.MaxSpeed)
+	s.mu.Unlock()
+}
+
+// SetTimeScale устанавливает скорость времени
+func (s *Simulation) SetTimeScale(scale float64) {
+	s.mu.Lock()
+	// Ограничиваем значения от 0.1x до 10x
+	if scale < 0.1 {
+		scale = 0.1
+	}
+	if scale > 10.0 {
+		scale = 10.0
+	}
+	s.TimeScale = scale
 	s.mu.Unlock()
 }
 
@@ -330,6 +350,10 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			configData, _ := json.Marshal(cmd["data"])
 			json.Unmarshal(configData, &config)
 			simulation.UpdateConfig(config)
+		case "timescale":
+			if scale, ok := cmd["value"].(float64); ok {
+				simulation.SetTimeScale(scale)
+			}
 		}
 	}
 }
