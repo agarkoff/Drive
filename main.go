@@ -304,12 +304,12 @@ func (s *Simulation) UpdateConfig(config SimulationConfig) {
 // SetTimeScale устанавливает скорость времени
 func (s *Simulation) SetTimeScale(scale float64) {
 	s.mu.Lock()
-	// Ограничиваем значения от 0.1x до 10x
-	if scale < 0.1 {
-		scale = 0.1
+	// Ограничиваем значения от 0.2x до 20x
+	if scale < 0.2 {
+		scale = 0.2
 	}
-	if scale > 10.0 {
-		scale = 10.0
+	if scale > 20.0 {
+		scale = 20.0
 	}
 	s.TimeScale = scale
 	s.mu.Unlock()
