@@ -31,8 +31,8 @@
         }
 
         .main-content {
-            display: grid;
-            grid-template-columns: 300px 1fr;
+            display: flex;
+            flex-direction: column;
             gap: 20px;
             margin-bottom: 20px;
         }
@@ -42,17 +42,30 @@
             border-radius: 15px;
             padding: 20px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            height: fit-content;
         }
 
         .controls h2 {
             margin-bottom: 15px;
             color: #333;
             font-size: 1.3em;
+            grid-column: 1 / -1;
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .control-section {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
         }
 
         .control-group {
-            margin-bottom: 20px;
+            margin-bottom: 0;
         }
 
         .control-group label {
@@ -93,12 +106,14 @@
 
         .buttons {
             display: flex;
-            gap: 10px;
+            gap: 15px;
+            justify-content: center;
             flex-wrap: wrap;
+            margin-top: 20px;
         }
 
         button {
-            flex: 1;
+            min-width: 150px;
             padding: 12px 20px;
             border: none;
             border-radius: 8px;
@@ -221,8 +236,8 @@
             background: #ff6a00;
         }
 
-        @media (max-width: 1024px) {
-            .main-content {
+        @media (max-width: 768px) {
+            .controls-grid {
                 grid-template-columns: 1fr;
             }
         }
@@ -233,81 +248,140 @@
         <h1>🚗 Моделирование движения на автостраде</h1>
 
         <div class="main-content">
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #4ECDC4;"></div>
+                    <span>Нормальная скорость</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #FF6B6B;"></div>
+                    <span>Торможение</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #38ef7d;"></div>
+                    <span>Ускорение</span>
+                </div>
+            </div>
+
+            <div class="canvas-container">
+                <canvas id="roadCanvas" width="1000" height="400"></canvas>
+            </div>
+
             <div class="controls">
                 <h2>Управление</h2>
 
-                <div class="control-group">
-                    <label>
-                        Скорость времени:
-                        <span class="value-display" id="timeScaleValue">1.0x</span>
-                    </label>
-                    <input type="range" id="timeScale" min="0.2" max="20" step="0.2" value="1.0">
-                </div>
+                <div class="controls-grid">
+                    <!-- Секция: Общие параметры -->
+                    <div class="control-section">
+                        <h3 style="margin-bottom: 10px; color: #667eea;">⏱️ Общие параметры</h3>
 
-                <div class="control-group">
-                    <label>
-                        Интервал создания машин (сек):
-                        <span class="value-display" id="spawnIntervalValue">2.0</span>
-                    </label>
-                    <input type="range" id="spawnInterval" min="0.5" max="5" step="0.1" value="2.0">
-                </div>
+                        <div class="control-group">
+                            <label>
+                                Скорость времени:
+                                <span class="value-display" id="timeScaleValue">1.0x</span>
+                            </label>
+                            <input type="range" id="timeScale" min="0.2" max="20" step="0.2" value="1.0">
+                        </div>
 
-                <div class="control-group">
-                    <label>
-                        Мин. скорость (км/ч):
-                        <span class="value-display" id="minSpeedValue">50</span>
-                    </label>
-                    <input type="range" id="minSpeed" min="30" max="80" step="5" value="50">
-                </div>
+                        <div class="control-group">
+                            <label>
+                                Интервал создания (сек):
+                                <span class="value-display" id="spawnIntervalValue">2.0</span>
+                            </label>
+                            <input type="range" id="spawnInterval" min="0.5" max="5" step="0.1" value="2.0">
+                        </div>
 
-                <div class="control-group">
-                    <label>
-                        Макс. скорость (км/ч):
-                        <span class="value-display" id="maxSpeedValue">80</span>
-                    </label>
-                    <input type="range" id="maxSpeed" min="50" max="120" step="5" value="80">
-                </div>
+                        <div class="control-group">
+                            <label>
+                                Макс. количество машин:
+                                <span class="value-display" id="maxCarsValue">100</span>
+                            </label>
+                            <input type="range" id="maxCars" min="10" max="500" step="10" value="100">
+                        </div>
+                    </div>
 
-                <div class="control-group">
-                    <label>
-                        Макс. количество машин:
-                        <span class="value-display" id="maxCarsValue">100</span>
-                    </label>
-                    <input type="range" id="maxCars" min="10" max="500" step="10" value="100">
-                </div>
+                    <!-- Секция: Параметры скорости -->
+                    <div class="control-section">
+                        <h3 style="margin-bottom: 10px; color: #667eea;">🚗 Скорость автомобилей</h3>
 
-                <h3 style="margin-top: 20px; margin-bottom: 10px; color: #667eea;">⚙️ Параметры физики</h3>
+                        <div class="control-group">
+                            <label>
+                                Мин. скорость (км/ч):
+                                <span class="value-display" id="minSpeedValue">50</span>
+                            </label>
+                            <input type="range" id="minSpeed" min="30" max="80" step="5" value="50">
+                        </div>
 
-                <div class="control-group">
-                    <label>
-                        Время реакции (сек):
-                        <span class="value-display" id="reactionTimeValue">0.2</span>
-                    </label>
-                    <input type="range" id="reactionTime" min="0.1" max="1.0" step="0.05" value="0.2">
-                </div>
+                        <div class="control-group">
+                            <label>
+                                Макс. скорость (км/ч):
+                                <span class="value-display" id="maxSpeedValue">80</span>
+                            </label>
+                            <input type="range" id="maxSpeed" min="50" max="120" step="5" value="80">
+                        </div>
+                    </div>
 
-                <div class="control-group">
-                    <label>
-                        Коэф. безопасности:
-                        <span class="value-display" id="safetyMultiplierValue">3.0</span>
-                    </label>
-                    <input type="range" id="safetyMultiplier" min="1.0" max="5.0" step="0.1" value="3.0">
-                </div>
+                    <!-- Секция: Параметры физики -->
+                    <div class="control-section">
+                        <h3 style="margin-bottom: 10px; color: #667eea;">⚙️ Параметры физики</h3>
 
-                <div class="control-group">
-                    <label>
-                        Торможение (м/с²):
-                        <span class="value-display" id="brakeDecelerationValue">6.67</span>
-                    </label>
-                    <input type="range" id="brakeDeceleration" min="2.0" max="15.0" step="0.1" value="6.67">
-                </div>
+                        <div class="control-group">
+                            <label>
+                                Время реакции (сек):
+                                <span class="value-display" id="reactionTimeValue">0.2</span>
+                            </label>
+                            <input type="range" id="reactionTime" min="0.1" max="1.0" step="0.05" value="0.2">
+                        </div>
 
-                <div class="control-group">
-                    <label>
-                        Ускорение (м/с²):
-                        <span class="value-display" id="accelerationValue">2.0</span>
-                    </label>
-                    <input type="range" id="acceleration" min="0.5" max="5.0" step="0.1" value="2.0">
+                        <div class="control-group">
+                            <label>
+                                Коэф. безопасности:
+                                <span class="value-display" id="safetyMultiplierValue">3.0</span>
+                            </label>
+                            <input type="range" id="safetyMultiplier" min="1.0" max="5.0" step="0.1" value="3.0">
+                        </div>
+
+                        <div class="control-group">
+                            <label>
+                                Торможение (м/с²):
+                                <span class="value-display" id="brakeDecelerationValue">6.67</span>
+                            </label>
+                            <input type="range" id="brakeDeceleration" min="2.0" max="15.0" step="0.1" value="6.67">
+                        </div>
+
+                        <div class="control-group">
+                            <label>
+                                Ускорение (м/с²):
+                                <span class="value-display" id="accelerationValue">2.0</span>
+                            </label>
+                            <input type="range" id="acceleration" min="0.5" max="5.0" step="0.1" value="2.0">
+                        </div>
+                    </div>
+
+                    <!-- Секция: Статистика -->
+                    <div class="control-section">
+                        <h3 style="margin-bottom: 10px; color: #667eea;">
+                            <span class="status-indicator" id="statusIndicator"></span>
+                            📊 Статистика
+                        </h3>
+
+                        <div class="stat-item">
+                            <span class="stat-label">Время:</span>
+                            <span class="stat-value" id="time">0.0 с</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Машин на дороге:</span>
+                            <span class="stat-value" id="carsOnRoad">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Создано машин:</span>
+                            <span class="stat-value" id="totalCars">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Прошли дорогу:</span>
+                            <span class="stat-value" id="completedCars">0</span>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="buttons">
@@ -315,50 +389,9 @@
                     <button class="btn-stop" onclick="stopSimulation()">⏸ Стоп</button>
                     <button class="btn-reset" onclick="resetSimulation()">🔄 Сброс</button>
                 </div>
-
-                <div class="stats">
-                    <h3>
-                        <span class="status-indicator" id="statusIndicator"></span>
-                        Статистика
-                    </h3>
-                    <div class="stat-item">
-                        <span class="stat-label">Время:</span>
-                        <span class="stat-value" id="time">0.0 с</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Машин на дороге:</span>
-                        <span class="stat-value" id="carsOnRoad">0</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Создано машин:</span>
-                        <span class="stat-value" id="totalCars">0</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Прошли дорогу:</span>
-                        <span class="stat-value" id="completedCars">0</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="canvas-container">
-                <canvas id="roadCanvas" width="1000" height="600"></canvas>
             </div>
         </div>
 
-        <div class="legend">
-            <div class="legend-item">
-                <div class="legend-color" style="background: #4ECDC4;"></div>
-                <span>Нормальная скорость</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color" style="background: #FF6B6B;"></div>
-                <span>Торможение</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color" style="background: #38ef7d;"></div>
-                <span>Ускорение</span>
-            </div>
-        </div>
     </div>
 
     <script>
