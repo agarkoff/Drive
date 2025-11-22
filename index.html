@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Моделирование движения на автостраде</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: white;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .controls {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            height: fit-content;
+        }
+
+        .controls h2 {
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 1.3em;
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        .control-group input[type="number"],
+        .control-group input[type="range"] {
+            width: 100%;
+            padding: 8px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 0.9em;
+            transition: border-color 0.3s;
+        }
+
+        .control-group input[type="number"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .control-group input[type="range"] {
+            padding: 0;
+            height: 8px;
+            cursor: pointer;
+        }
+
+        .value-display {
+            display: inline-block;
+            margin-left: 10px;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.2);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .btn-start {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+
+        .btn-stop {
+            background: linear-gradient(135deg, #ee0979 0%, #ff6a00 100%);
+            color: white;
+        }
+
+        .btn-reset {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .stats {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        .stats h3 {
+            margin-bottom: 10px;
+            color: #333;
+            font-size: 1.1em;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .stat-item:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            color: #666;
+        }
+
+        .stat-value {
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .canvas-container {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            border-radius: 10px;
+            background: #f0f4f8;
+        }
+
+        .legend {
+            background: white;
+            border-radius: 15px;
+            padding: 15px 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .legend-color {
+            width: 30px;
+            height: 20px;
+            border-radius: 4px;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-running {
+            background: #38ef7d;
+            box-shadow: 0 0 10px #38ef7d;
+        }
+
+        .status-stopped {
+            background: #ff6a00;
+        }
+
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚗 Моделирование движения на автостраде</h1>
+
+        <div class="main-content">
+            <div class="controls">
+                <h2>Управление</h2>
+
+                <div class="control-group">
+                    <label>
+                        Интервал создания машин (сек):
+                        <span class="value-display" id="spawnIntervalValue">2.0</span>
+                    </label>
+                    <input type="range" id="spawnInterval" min="0.5" max="5" step="0.1" value="2.0">
+                </div>
+
+                <div class="control-group">
+                    <label>
+                        Мин. скорость (км/ч):
+                        <span class="value-display" id="minSpeedValue">50</span>
+                    </label>
+                    <input type="range" id="minSpeed" min="30" max="80" step="5" value="50">
+                </div>
+
+                <div class="control-group">
+                    <label>
+                        Макс. скорость (км/ч):
+                        <span class="value-display" id="maxSpeedValue">80</span>
+                    </label>
+                    <input type="range" id="maxSpeed" min="50" max="120" step="5" value="80">
+                </div>
+
+                <div class="buttons">
+                    <button class="btn-start" onclick="startSimulation()">▶ Старт</button>
+                    <button class="btn-stop" onclick="stopSimulation()">⏸ Стоп</button>
+                    <button class="btn-reset" onclick="resetSimulation()">🔄 Сброс</button>
+                </div>
+
+                <div class="stats">
+                    <h3>
+                        <span class="status-indicator" id="statusIndicator"></span>
+                        Статистика
+                    </h3>
+                    <div class="stat-item">
+                        <span class="stat-label">Время:</span>
+                        <span class="stat-value" id="time">0.0 с</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Машин на дороге:</span>
+                        <span class="stat-value" id="carsOnRoad">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Создано машин:</span>
+                        <span class="stat-value" id="totalCars">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Прошли дорогу:</span>
+                        <span class="stat-value" id="completedCars">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="canvas-container">
+                <canvas id="roadCanvas" width="1000" height="600"></canvas>
+            </div>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color" style="background: #4ECDC4;"></div>
+                <span>Нормальная скорость</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #FF6B6B;"></div>
+                <span>Торможение</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #38ef7d;"></div>
+                <span>Ускорение</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws;
+        let canvas = document.getElementById('roadCanvas');
+        let ctx = canvas.getContext('2d');
+        let simulationData = null;
+
+        // Подключение к WebSocket
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
+
+            ws.onopen = () => {
+                console.log('WebSocket connected');
+            };
+
+            ws.onmessage = (event) => {
+                simulationData = JSON.parse(event.data);
+                updateUI();
+                drawRoad();
+            };
+
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+            };
+
+            ws.onclose = () => {
+                console.log('WebSocket disconnected, reconnecting...');
+                setTimeout(connectWebSocket, 1000);
+            };
+        }
+
+        // Обновление UI
+        function updateUI() {
+            if (!simulationData) return;
+
+            document.getElementById('time').textContent = simulationData.time.toFixed(1) + ' с';
+            document.getElementById('carsOnRoad').textContent = simulationData.cars.length;
+            document.getElementById('totalCars').textContent = simulationData.totalCarsMade;
+            document.getElementById('completedCars').textContent = simulationData.carsCompleted;
+
+            const statusIndicator = document.getElementById('statusIndicator');
+            statusIndicator.className = 'status-indicator ' +
+                (simulationData.running ? 'status-running' : 'status-stopped');
+        }
+
+        // Отрисовка дороги
+        function drawRoad() {
+            if (!simulationData) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const roadWidth = canvas.width - 40;
+            const roadHeight = 80;
+            const roadY = (canvas.height - roadHeight) / 2;
+            const roadX = 20;
+
+            // Фон дороги
+            ctx.fillStyle = '#2d3748';
+            ctx.fillRect(roadX, roadY, roadWidth, roadHeight);
+
+            // Разметка
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([20, 15]);
+            ctx.beginPath();
+            ctx.moveTo(roadX, roadY + roadHeight / 2);
+            ctx.lineTo(roadX + roadWidth, roadY + roadHeight / 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Границы дороги
+            ctx.strokeStyle = '#f7dc6f';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(roadX, roadY);
+            ctx.lineTo(roadX + roadWidth, roadY);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(roadX, roadY + roadHeight);
+            ctx.lineTo(roadX + roadWidth, roadY + roadHeight);
+            ctx.stroke();
+
+            // Маркеры расстояния
+            ctx.fillStyle = '#718096';
+            ctx.font = '12px Arial';
+            for (let i = 0; i <= 5; i++) {
+                const x = roadX + (roadWidth * i / 5);
+                ctx.fillText(`${i} км`, x - 15, roadY - 10);
+                ctx.fillRect(x, roadY - 5, 2, 10);
+            }
+
+            // Отрисовка автомобилей
+            simulationData.cars.forEach(car => {
+                const x = roadX + (car.position / simulationData.roadLength) * roadWidth;
+                const carWidth = 40;
+                const carHeight = 25;
+                const y = roadY + (roadHeight - carHeight) / 2;
+
+                // Цвет в зависимости от состояния
+                let color = car.color;
+                if (car.state === 'braking') {
+                    color = '#FF6B6B';
+                } else if (car.state === 'accelerating') {
+                    color = '#38ef7d';
+                }
+
+                // Тело автомобиля
+                ctx.fillStyle = color;
+                ctx.fillRect(x - carWidth/2, y, carWidth, carHeight);
+                ctx.strokeStyle = '#1a202c';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(x - carWidth/2, y, carWidth, carHeight);
+
+                // Окна
+                ctx.fillStyle = '#4299e1';
+                ctx.fillRect(x - carWidth/2 + 5, y + 3, 12, 8);
+                ctx.fillRect(x - carWidth/2 + 20, y + 3, 12, 8);
+
+                // Колеса
+                ctx.fillStyle = '#1a202c';
+                ctx.beginPath();
+                ctx.arc(x - carWidth/2 + 10, y + carHeight, 4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(x - carWidth/2 + 30, y + carHeight, 4, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Скорость и статистика
+                ctx.fillStyle = '#2d3748';
+                ctx.font = 'bold 10px Arial';
+                const speedKmh = (car.speed * 3.6).toFixed(0);
+                ctx.fillText(`${speedKmh} км/ч`, x - carWidth/2, y - 5);
+
+                if (car.brakeCount > 0) {
+                    ctx.fillStyle = '#e53e3e';
+                    ctx.font = 'bold 9px Arial';
+                    ctx.fillText(`⚠${car.brakeCount}`, x - carWidth/2 + carWidth - 15, y - 5);
+                }
+            });
+        }
+
+        // Управление симуляцией
+        function startSimulation() {
+            ws.send(JSON.stringify({ action: 'start' }));
+        }
+
+        function stopSimulation() {
+            ws.send(JSON.stringify({ action: 'stop' }));
+        }
+
+        function resetSimulation() {
+            ws.send(JSON.stringify({ action: 'reset' }));
+        }
+
+        function updateConfig() {
+            const config = {
+                spawnInterval: parseFloat(document.getElementById('spawnInterval').value),
+                minSpeed: parseFloat(document.getElementById('minSpeed').value),
+                maxSpeed: parseFloat(document.getElementById('maxSpeed').value)
+            };
+            ws.send(JSON.stringify({ action: 'config', data: config }));
+        }
+
+        // Обработчики событий
+        document.getElementById('spawnInterval').addEventListener('input', function() {
+            document.getElementById('spawnIntervalValue').textContent = this.value;
+            updateConfig();
+        });
+
+        document.getElementById('minSpeed').addEventListener('input', function() {
+            document.getElementById('minSpeedValue').textContent = this.value;
+            updateConfig();
+        });
+
+        document.getElementById('maxSpeed').addEventListener('input', function() {
+            document.getElementById('maxSpeedValue').textContent = this.value;
+            updateConfig();
+        });
+
+        // Адаптивный размер canvas
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            const width = container.clientWidth - 40;
+            canvas.width = width;
+            if (simulationData) {
+                drawRoad();
+            }
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Запуск
+        connectWebSocket();
+    </script>
+</body>
+</html>
